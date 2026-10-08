@@ -1,0 +1,143 @@
+services:
+  broker-mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: broker-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$SYS/#' -C 1 -W 3 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+  db-mongodb:
+    image: mongo:latest
+    container_name: db-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+  producer-reddit:
+    build:
+      context: ./producer
+    container_name: producer-reddit
+    depends_on:
+      - broker-mqtt
+    environment:
+      MQTT_HOST: broker-mqtt
+      MQTT_PORT: "1883"
+      REDDIT_RAW_TOPIC: reddit/posts/raw
+      REDDIT_STATUS_TOPIC: reddit/status/producer
+      REDDIT_USE_MOCK: "true"
+      REDDIT_INTERVAL_MIN: "1"
+      REDDIT_INTERVAL_MAX: "3"
+      REDDIT_TICKERS: NVDA,AMD,TSM,AVGO,INTC,MSFT,GOOGL,AMZN,META,AAPL,PLTR,SNOW,ORCL
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+  analyzer-sentiment:
+    build:
+      context: ./analyzer
+    container_name: analyzer-sentiment
+    depends_on:
+      - broker-mqtt
+    environment:
+      MQTT_HOST: broker-mqtt
+      MQTT_PORT: "1883"
+      REDDIT_RAW_TOPIC: reddit/posts/raw
+      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
+      REDDIT_ALERT_TOPIC: reddit/alerts
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+  consumer-db:
+    build:
+      context: ./db_writer
+    container_name: consumer-db
+    depends_on:
+      - broker-mqtt
+      - db-mongodb
+    environment:
+      MQTT_HOST: broker-mqtt
+      MQTT_PORT: "1883"
+      MONGO_URI: mongodb://db-mongodb:27017
+      MONGO_DB: reddit_analytics
+      RAW_COLLECTION: raw_posts
+      ANALYZED_COLLECTION: sentiment_analyzed
+      REDDIT_RAW_TOPIC: reddit/posts/raw
+      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+  dashboard-nodered:
+    image: nodered/node-red:latest
+    container_name: dashboard-nodered
+    ports:
+      - "1880:1880"
+    depends_on:
+      - broker-mqtt
+    environment:
+      MQTT_BROKER_HOST: broker-mqtt
+      MQTT_BROKER_PORT: "1883"
+      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
+      REDDIT_ALERT_TOPIC: reddit/alerts
+    volumes:
+      - ./nodered:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:1880', timeout=2)\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - reddit_net
+
+networks:
+  reddit_net:
+    driver: bridge
+
+volumes:
+  mosquitto_data:
+  mosquitto_log:
+  mongo_data:
