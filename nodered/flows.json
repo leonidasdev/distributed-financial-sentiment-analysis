@@ -4,7 +4,7 @@
     "type": "tab",
     "label": "Financial Sentiment Dashboard",
     "disabled": false,
-    "info": "Flow para visualizar eventos analizados y alertas del pipeline MQTT."
+    "info": "Flow to visualize analyzed events and alerts from the MQTT pipeline."
   },
   {
     "id": "broker-config",
@@ -75,7 +75,7 @@
     "id": "debug-analyzed",
     "type": "debug",
     "z": "flow-financial-sentiment",
-    "name": "Análisis recibidos",
+    "name": "Received analysis",
     "active": true,
     "tosidebar": true,
     "console": false,
@@ -92,7 +92,7 @@
     "id": "debug-alerts",
     "type": "debug",
     "z": "flow-financial-sentiment",
-    "name": "Alertas",
+    "name": "Alerts",
     "active": true,
     "tosidebar": true,
     "console": false,

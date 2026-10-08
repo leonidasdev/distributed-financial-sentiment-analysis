@@ -1,80 +1,80 @@
 # Reddit Financial Sentiment Analysis
 
-Arquitectura distribuida en Docker Compose + MQTT para ingesta sintética o real de Reddit, análisis de sentimiento con VADER y persistencia en MongoDB.
+Distributed architecture built with Docker Compose + MQTT for synthetic or real Reddit ingestion, sentiment analysis with VADER, and persistence in MongoDB.
 
-## Qué hace el sistema
+## What the system does
 
-El flujo principal es este:
+The main flow is:
 
-1. `producer-reddit` genera o extrae publicaciones de Reddit y publica mensajes JSON en MQTT.
-2. `analyzer-sentiment` consume los posts brutos, detecta el ticker, calcula sentimiento con VADER y emite un mensaje enriquecido.
-3. `consumer-db` persiste tanto el mensaje bruto como el analizado en MongoDB.
-4. `dashboard-nodered` queda preparado para consumir los topics analizados y mostrar un dashboard.
+1. `producer-reddit` generates or fetches Reddit posts and publishes JSON messages to MQTT.
+2. `analyzer-sentiment` consumes the raw posts, detects the ticker, computes sentiment with VADER, and emits an enriched message.
+3. `consumer-db` stores both the raw payload and the analyzed payload in MongoDB.
+4. `dashboard-nodered` subscribes to the analyzed topics and exposes a visual dashboard.
 
-La implementación prioriza aislamiento: el runtime vive en contenedores Docker y el desarrollo local se hace con `.venv`.
+The implementation prioritizes isolation: the runtime lives in Docker containers and local development uses a `.venv` environment.
 
-## Servicios
+## Services
 
-- `broker-mqtt`: Mosquitto con MQTT en `1883` y websockets en `9001`.
-- `db-mongodb`: MongoDB para `reddit_analytics`.
-- `producer-reddit`: publicador de posts crudos.
-- `analyzer-sentiment`: clasificador de sentimiento y detector de tickers.
-- `consumer-db`: persistencia de mensajes crudos y analizados.
-- `dashboard-nodered`: base de Node-RED para construir la interfaz.
+- `broker-mqtt`: Mosquitto with MQTT on `1883` and websocket support on `9001`.
+- `db-mongodb`: MongoDB for `reddit_analytics`.
+- `producer-reddit`: publishes raw posts.
+- `analyzer-sentiment`: sentiment classifier and ticker detector.
+- `consumer-db`: persists raw and analyzed messages.
+- `dashboard-nodered`: Node-RED base for the web dashboard.
 
-## Topics MQTT
+## MQTT topics
 
-Este proyecto usa una convención estándar de topics MQTT sin barras dobles:
+This project uses a standard MQTT topic convention without double slashes:
 
-- `reddit/posts/raw` para publicaciones crudas
-- `reddit/posts/analyzed` para resultados del analizador
-- `reddit/alerts` para alertas de sentimiento extremo
-- `reddit/status/producer` para el estado del productor con retained message
+- `reddit/posts/raw` for raw publications
+- `reddit/posts/analyzed` for analyzer results
+- `reddit/alerts` for extreme sentiment alerts
+- `reddit/status/producer` for producer health with retained message
 
-La elección de esta jerarquía simplifica la interoperabilidad, la observabilidad y la documentación del sistema.
+This topic structure improves interoperability, observability, and documentation clarity.
 
-## Esquemas de mensaje
+## Message schemas
 
-Entrada (`reddit/posts/raw`):
-
-```json
-{
-	"id": "string",
-	"subreddit": "string",
-	"ticker_hint": "string",
-	"title": "string",
-	"author": "string",
-	"timestamp": "ISO-8601 UTC"
-}
-```
-
-Salida (`reddit/posts/analyzed`):
+Input (`reddit/posts/raw`):
 
 ```json
 {
-	"id": "string",
-	"subreddit": "string",
-	"ticker": "string",
-	"title": "string",
-	"author": "string",
-	"sentiment": {
-		"compound": 0.0,
-		"pos": 0.0,
-		"neu": 0.0,
-		"neg": 0.0,
-		"label": "positivo | neutro | negativo"
-	},
-	"timestamp": "ISO-8601 UTC"
+  "id": "string",
+  "subreddit": "string",
+  "ticker_hint": "string",
+  "title": "string",
+  "author": "string",
+  "timestamp": "ISO-8601 UTC"
 }
 ```
 
-## Ejecución
+Output (`reddit/posts/analyzed`):
 
-1. Copia `.env.example` a `.env` si quieres configurar Reddit real o ajustar parámetros.
-2. Ejecuta `docker compose up --build`.
-3. Abre Node-RED en `http://localhost:1880`.
+```json
+{
+  "id": "string",
+  "subreddit": "string",
+  "ticker": "string",
+  "title": "string",
+  "author": "string",
+  "sentiment": {
+    "compound": 0.0,
+    "pos": 0.0,
+    "neu": 0.0,
+    "neg": 0.0,
+    "label": "positive | neutral | negative"
+  },
+  "timestamp": "ISO-8601 UTC"
+}
+```
 
-## Desarrollo local
+## Execution
+
+1. Copy `.env.example` to `.env` if you want to configure real Reddit access or adjust parameters.
+2. Run `docker compose up --build`.
+3. Open Node-RED at `http://localhost:1880`.
+
+## Local development
 
 ```powershell
 py -3 -m venv .venv
@@ -84,31 +84,35 @@ python -m pytest
 python -m ruff check .
 ```
 
-El proyecto está pensado para ejecutarse en contenedores; las dependencias de runtime no deben instalarse globalmente en el sistema. Para trabajo local, crea un entorno virtual en `.venv` y usa ese aislamiento para pruebas y tooling.
+The project is designed to run in containers; runtime dependencies should not be installed globally. For local work, use a dedicated `.venv` environment for tests and tooling.
 
-Estado validado en este workspace: `.venv` creada, dependencias instaladas, `pytest` en verde y `ruff check .` en verde.
+Validated in this workspace: `.venv` created, dependencies installed, `pytest` green, and `ruff check .` green.
 
-## Variables clave
+## Key variables
 
-- `REDDIT_USE_MOCK=true` activa la generación sintética.
-- Si defines credenciales `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` y `REDDIT_USER_AGENT`, el productor intentará leer Reddit con `praw`.
-- `MONGO_URI` apunta a `mongodb://db-mongodb:27017` dentro de Compose.
+- `REDDIT_USE_MOCK=true` enables synthetic generation.
+- If you define `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, and `REDDIT_USER_AGENT`, the producer can attempt to read from Reddit via `praw`.
+- `MONGO_URI` points to `mongodb://db-mongodb:27017` inside Compose.
 
-## Persistencia
+## Reddit free-tier note
 
-- `raw_posts`: documentos originales.
-- `sentiment_analyzed`: documentos enriquecidos con `ticker` y `sentiment`.
+The project is compatible with a Reddit free-tier or developer app workflow. A Reddit account is sufficient to create a script app under the Reddit developer settings, and the app credentials can be used without a paid plan for demo or academic usage. This is useful when you want to replace mock data with live Reddit posts while being within lightweight usage limits.
 
-## Calidad y límites actuales
+## Persistence
 
-- La lógica crítica tiene tests unitarios y además se validó con arranque real de Docker.
-- El dashboard de Node-RED queda exportado en el repositorio como JSON reproducible.
-- La idempotencia en MongoDB está resuelta con `replace_one` por `id`; si se quiere robustez total, conviene definir una clave de negocio adicional.
+- `raw_posts`: original documents.
+- `sentiment_analyzed`: enriched documents with `ticker` and `sentiment` analysis.
 
-Los tests actuales cubren la lógica pura de productor, analizador y writer de MongoDB. La validación end-to-end se ha comprobado con Docker y MQTT reales.
+## Quality and current limitations
 
-## Notas de diseño
+- The core logic has unit tests and was also validated with a real Docker startup.
+- The Node-RED dashboard is exported in the repository as a reproducible JSON flow.
+- MongoDB idempotency is handled with `replace_one` by `id`; for stronger production guarantees, a dedicated business key should be added.
 
-- El productor publica un LWT en `reddit/status/producer` con `{"status": "OFFLINE"}` y marca `ONLINE` al conectarse.
-- El analizador emite alertas cuando `|compound| > 0.6`.
-- MongoDB crea índices sobre `ticker`/`timestamp` en analizados y `ticker_hint`/`timestamp` en crudos.
+The current tests cover the pure logic of the producer, analyzer, and MongoDB writer. End-to-end validation has also been confirmed with real Docker and MQTT traffic.
+
+## Design notes
+
+- The producer publishes an LWT on `reddit/status/producer` with `{"status": "OFFLINE"}` and marks `ONLINE` when it connects.
+- The analyzer emits alerts when `|compound| > 0.6`.
+- MongoDB creates indexes on `ticker`/`timestamp` for analyzed documents and `ticker_hint`/`timestamp` for raw documents.
