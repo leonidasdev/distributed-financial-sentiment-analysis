@@ -1,12 +1,10 @@
-# Memoria del proyecto: Distributed Financial Sentiment Analysis
+# Memoria del proyecto: Financial News Sentiment Analysis
 
 ## 1. Problema y motivación
 
-En los mercados financieros, la percepción del sentimiento público puede influir en la evolución de precios y en la toma de decisiones de inversores. Sin embargo, la información de redes sociales y foros financieros aparece en forma de flujos continuos y heterogéneos, con gran volumen y poca estructura. Para convertir esos datos en información útil, es necesario procesarlos en tiempo real y combinarlos con técnicas de análisis de opinión.
+En los mercados financieros, el flujo de noticias influye en la percepción pública, en la toma de decisiones y en la evolución de los precios. Sin embargo, la información llega de forma continua, heterogénea y poco estructurada. El objetivo de este proyecto es transformar ese flujo de noticias en eventos útiles que puedan analizarse y visualizarse en tiempo real.
 
-Este proyecto propone un sistema distribuido basado en MQTT para ingestar publicaciones generadas de forma sintética o real, analizarlas con VADER, detectar tickers relevantes y persistir tanto los mensajes originales como los resultados enriquecidos en MongoDB. La solución se diseñó como una arquitectura orientada a eventos con desacoplamiento entre productores, consumidores y almacenamiento, con un componente visual de monitorización mediante Node-RED.
-
-La motivación principal es demostrar, de forma aplicada, cómo un sistema publish/subscribe permite construir un pipeline de análisis distribuidos con baja acoplamiento, escalabilidad horizontal y capacidad de observabilidad en tiempo real.
+La solución propuesta combina NewsAPI como fuente de artículos, MQTT como eje de comunicación, VADER para el análisis de sentimiento, MongoDB para persistencia y Node-RED para la visualización. El sistema se ha diseñado como una arquitectura orientada a eventos con productores y consumidores desacoplados.
 
 ## 2. Diseño del sistema
 
@@ -14,18 +12,18 @@ La motivación principal es demostrar, de forma aplicada, cómo un sistema publi
 
 El sistema está compuesto por los siguientes componentes:
 
-- Productor: genera mensajes de tipo Reddit sintéticos o intenta consumir Reddit real si hay credenciales configuradas.
-- Broker MQTT: Mosquitto, que actúa como middleware central de comunicación.
-- Analizador: consume mensajes crudos, extrae el ticker, calcula el sentimiento con VADER y publica el resultado enriquecido.
-- Persistencia: MongoDB almacena tanto mensajes originales como analizados.
-- Dashboard: Node-RED subscribido a los topics de análisis y alertas para visualizar eventos en tiempo real.
+- Productor: obtiene artículos de NewsAPI o genera noticias sintéticas en modo mock.
+- Broker MQTT: Mosquitto, que centraliza la comunicación publish/subscribe.
+- Analizador: consume noticias crudas, detecta tickers relevantes y calcula sentimiento con VADER.
+- Persistencia: MongoDB almacena tanto los artículos originales como los enriquecidos.
+- Dashboard: Node-RED consume los topics analizados y de alerta para visualizar el flujo.
 
 El flujo principal es:
 
-1. El productor publica mensajes en `reddit/posts/raw`.
-2. El analizador se suscribe a dicho topic.
-3. El analizador analiza el texto, detecta el ticker y publica el resultado en `reddit/posts/analyzed`.
-4. El escritor a MongoDB recibe ambos topics y persiste los documentos.
+1. El productor publica artículos en `news/articles/raw`.
+2. El analizador se suscribe a ese topic.
+3. El analizador evalúa el texto, detecta el ticker y publica el resultado en `news/articles/analyzed`.
+4. El writer de MongoDB persiste los documentos crudos y analizados.
 5. Node-RED consume el topic analizado y las alertas para monitorizar el sistema.
 
 ### 2.2 Diagrama de componentes
@@ -33,7 +31,7 @@ El flujo principal es:
 ```text
 +-------------------+        MQTT        +-------------------+
 | Producer          | ----------------> | Mosquitto Broker  |
-| (mock / Reddit)   |                    | MQTT              |
+| (mock / NewsAPI)  |                    | MQTT              |
 +-------------------+                    +-------------------+
                                                  |
                                                  v
@@ -57,94 +55,83 @@ El flujo principal es:
 
 ### 2.3 Topología MQTT
 
-El proyecto usa una topología muy simple, pero efectiva, de tipo publish/subscribe con broker central:
+La topología MQTT es simple y legible, con topics jerárquicos para cada fase del pipeline:
 
-- `reddit/posts/raw`: eventos generados por el productor.
-- `reddit/posts/analyzed`: resultados del analizador.
-- `reddit/alerts`: alertas por sentimiento extremo.
-- `reddit/status/producer`: estado del productor con retained message.
+- `news/articles/raw`: artículos crudos publicados por el productor.
+- `news/articles/analyzed`: resultados enriquecidos del analizador.
+- `news/alerts`: alertas por sentimiento extremo.
+- `news/status/producer`: estado del productor con retained message.
 
-Se eligió una jerarquía de topics ordenada y estándar, eliminando barras dobles para evitar complejidad y mejoras de interoperabilidad. Los topics siguen una estructura jerárquica clara y legible, compatible con consumidores típicos de MQTT.
+El diseño evita barras dobles y mantiene una convención consistente. Además, el estado del productor usa retained message y Last Will & Testament para facilitar observabilidad.
 
-### 2.4 Semántica de recepción y publicación
+### 2.4 Semántica de entrega
 
-En MQTT, la elección del nivel QoS condiciona la fiabilidad de entrega. En este proyecto se usa:
+En este proyecto se utiliza principalmente QoS 1 para los mensajes de negocio críticos:
 
-- QoS 1 para mensajes de negocio críticos: `reddit/posts/raw` y `reddit/posts/analyzed`.
-- QoS 0 para alertas no críticas: `reddit/alerts`.
+- `news/articles/raw`
+- `news/articles/analyzed`
 
-Esto implica una semántica de tipo at-least-once para los eventos principales. La aplicación asume que un mensaje duplicado puede aparecer en caso de reintento del broker o reconexión del cliente; por eso el sistema usa `replace_one` con `id` como clave de idempotencia básica en MongoDB. Esto evita duplicados de persistencia de un mismo evento, aunque no reemplaza una estrategia de deduplicación más fuerte para sistemas distribuidos a mayor escala.
+Las alertas usan QoS 0 porque son eventos auxiliares de observabilidad. El compromiso elegido es at-least-once para el flujo principal. Para evitar duplicados en persistencia se usa `replace_one` con `id` como clave básica de idempotencia.
 
-En términos de la taxonomía de entrega:
+### 2.5 Persistencia en MongoDB
 
-- at-most-once: no es el modelo elegido
-- at-least-once: sí es el modelo principal
-- exactly-once: no se implementa de forma nativa por MQTT; se hace parcialmente mediante upsert en MongoDB
+MongoDB se utiliza como almacén documental para guardar tanto el artículo original como el analizado. La colección cruda indexa `source_name` y `timestamp`, mientras que la colección analizada indexa `ticker` y `timestamp`.
 
-### 2.5 Base de datos distribuida
-
-Se usa MongoDB como almacenamiento persistente. Aunque no es un sistema distribuido multi-nodo en la práctica de esta entrega, la persistencia está diseñada para un patrón de almacenamiento centralizado con índices sobre campos de consulta relevantes.
-
-Modelos de consulta:
-
-- `raw_posts`: índice sobre `ticker_hint` y `timestamp`
-- `sentiment_analyzed`: índice sobre `ticker` y `timestamp`
-
-La decisión de usar MongoDB es razonable para este caso por su capacidad para guardar documentos JSON, su rapidez y su compatibilidad con flujos de datos semiestructurados.
+Aunque en esta entrega no se despliega un cluster distribuido real, la elección de MongoDB encaja bien con el formato JSON de los mensajes y con la evolución futura hacia particionado o replicación.
 
 ## 3. Implementación del análisis de sentimiento
 
-El analizador recibe un post, detecta el ticker del título mediante una expresión regular sobre una lista de símbolos financieros predefinida y aplica VADER. El cálculo se genera sobre el texto del título, que es la parte más clara y descriptiva del post.
+El analizador recibe el título y la descripción del artículo, construye un texto combinado y aplica VADER. Para extraer el ticker usa una expresión regular sobre una lista de símbolos financieros conocida.
 
 La salida incluye:
 
 - `compound`
 - `pos`, `neu`, `neg`
-- `label` calculado con thresholds claros:
-  - `>= 0.05` → positivo
-  - `<= -0.05` → negativo
-  - en otro caso → neutro
+- `label` calculado con los siguientes umbrales:
+  - `>= 0.05` -> positive
+  - `<= -0.05` -> negative
+  - en otro caso -> neutral
 
-Además, si el valor absoluto del compound supera 0.6, se genera una alerta en `reddit/alerts`.
+Si el valor absoluto del `compound` supera 0.6, el analizador publica una alerta adicional en `news/alerts`.
 
 ## 4. Patrones de arquitectura orientada a eventos
 
-Se aplican varios principios de arquitectura orientada a eventos:
+El proyecto aplica varios principios de arquitectura orientada a eventos:
 
-- desacople entre productores y consumidores mediante el broker MQTT
-- flujo basado en eventos en lugar de llamadas síncronas directas
-- persistencia de eventos en MongoDB para análisis posterior
-- uso de mensajes de estado con retained message para conocer el estado del productor
+- desacoplamiento entre productor, analizador y almacenamiento
+- comunicación asíncrona mediante broker MQTT
+- persistencia de eventos para análisis posterior
+- mensajes retained para estado operativo
+- uso de alertas como canal complementario de observabilidad
 
-Este proyecto no implementa un patrón formal completo de Event Sourcing ni CQRS, pero sí usa una lógica orientada a eventos muy clara y fiel a la asignatura.
+No se ha implementado Event Sourcing completo ni CQRS, pero sí una arquitectura claramente guiada por eventos.
 
 ## 5. Conclusiones
 
-El sistema cumple con el eje mínimo exigido por el enunciado: usa MQTT como mecanismo central de comunicación y combina este patrón con procesamiento de datos y persistencia. La estructura modular hace que sea fácilmente extensible y la integración con Node-RED permite monitorización visual con poco esfuerzo.
+La solución cumple el requisito mínimo de la asignatura al usar MQTT como eje de comunicación y combinarlo con procesamiento y persistencia de datos. La modularidad del diseño facilita la demostración en vivo y la posible ampliación posterior.
 
 Los principales beneficios son:
 
 - desacoplamiento entre componentes
-- tolerancia a cambios de implementación de cada módulo
-- observabilidad mejorada gracias a MQTT y dashboard visual
-- capacidad de expansión a más productores o análisis
+- observabilidad con Node-RED y retained messages
+- persistencia de documentos en formato natural para análisis posterior
+- posibilidad de usar datos reales o mock según el contexto de demo
 
 Las limitaciones principales son:
 
-- uso de un único broker, sin replicas ni cluster
-- persistencia centralizada sin sharding ni replicación distribuidos
-- lack de pruebas de integración completas con escenarios de desconexión o errores de red
-- idempotencia solo parcial, no completa para escenarios de producción extremo
+- broker único sin replicación
+- MongoDB centralizado
+- idempotencia básica, no distribuida
+- dependencia de la cuota de NewsAPI en modo real
 
 ## 6. Trabajo futuro
 
-- incorporar Kafka como alternativa o evolución del sistema para particiones y grupos de consumidores
-- añadir réplicas o clúster de MongoDB
-- implementar healthchecks más completos y métricas de monitorización
-- mejorar la idempotencia con claves compuestas o colecciones de control
-- ampliar Node-RED con paneles más avanzados y visualizaciones por ticker
-- contemplar un modelo de seguridad con autenticación MQTT y controles de acceso
+- añadir una capa de cache o colas auxiliares para absorber ráfagas
+- incorporar replicación o cluster en MongoDB
+- ampliar Node-RED con métricas por ticker y por fuente
+- añadir pruebas de integración con contenedores efímeros
+- explorar Kafka como evolución natural para más particiones y consumidores
 
-## 7. Conclusión final
+## 7. Cierre
 
-El proyecto demuestra un pipeline completo y funcional de análisis financiero basado en publish/subscribe, donde Python, MQTT y MongoDB trabajan de manera coordenada. Aun cuando se puede mejorar la robustez operativa y la escala, la solución cumple adecuadamente el objetivo académico propuesto y deja una base sólida para ampliación y defensa oral.
+El proyecto demuestra un pipeline distribuido completo para análisis de noticias financieras en tiempo real, con una arquitectura sencilla de explicar y una implementación suficientemente sólida para la presentación y la defensa oral.

@@ -21,13 +21,13 @@ def utc_now() -> str:
 
 def create_mongo_client() -> tuple[MongoClient, WritableCollection, WritableCollection]:
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-    db_name = os.getenv("MONGO_DB", "reddit_analytics")
+    db_name = os.getenv("MONGO_DB", "news_analytics")
     client: MongoClient = MongoClient(mongo_uri)
     database = client[db_name]
-    raw_collection = database[os.getenv("RAW_COLLECTION", "raw_posts")]
+    raw_collection = database[os.getenv("RAW_COLLECTION", "raw_articles")]
     analyzed_collection = database[os.getenv("ANALYZED_COLLECTION", "sentiment_analyzed")]
 
-    raw_collection.create_index([("ticker_hint", 1), ("timestamp", 1)])
+    raw_collection.create_index([("source_name", 1), ("timestamp", 1)])
     analyzed_collection.create_index([("ticker", 1), ("timestamp", 1)])
     return client, raw_collection, analyzed_collection
 
@@ -37,8 +37,8 @@ def create_client() -> mqtt.Client:
 
 
 def subscribe_topics(client: mqtt.Client) -> None:
-    client.subscribe(os.getenv("REDDIT_RAW_TOPIC", "reddit/posts/raw"), qos=1)
-    client.subscribe(os.getenv("REDDIT_ANALYZED_TOPIC", "reddit/posts/analyzed"), qos=1)
+    client.subscribe(os.getenv("NEWS_RAW_TOPIC", "news/articles/raw"), qos=1)
+    client.subscribe(os.getenv("NEWS_ANALYZED_TOPIC", "news/articles/analyzed"), qos=1)
 
 
 def persist_document(collection: WritableCollection, document: dict[str, object]) -> None:
@@ -65,9 +65,9 @@ def main() -> None:
         except json.JSONDecodeError:
             return
 
-        if message.topic.endswith("posts/raw"):
+        if message.topic.endswith("articles/raw"):
             persist_document(raw_collection, {**payload, "source_topic": message.topic})
-        elif message.topic.endswith("posts/analyzed"):
+        elif message.topic.endswith("articles/analyzed"):
             persist_document(analyzed_collection, {**payload, "source_topic": message.topic})
 
     mqtt_client.on_connect = on_connect

@@ -19,22 +19,22 @@ producer = load_module("producer_module", "producer/producer.py")
 
 
 def test_get_ticker_list_uses_default_when_env_is_empty(monkeypatch):
-    monkeypatch.delenv("REDDIT_TICKERS", raising=False)
+    monkeypatch.delenv("NEWS_TICKERS", raising=False)
 
     assert producer.get_ticker_list() == producer.TICKERS
 
 
-def test_build_mock_post_uses_configured_ticker_and_subreddit(monkeypatch):
+def test_build_mock_post_uses_configured_ticker_and_source(monkeypatch):
     monkeypatch.setattr(producer, "pick_item", lambda seq: seq[0])
-    monkeypatch.setattr(producer, "pick_int", lambda _a, _b: 1234)
     monkeypatch.setattr(producer.uuid, "uuid4", lambda: "11111111-2222-3333-4444-555555555555")
-    monkeypatch.setenv("REDDIT_TICKERS", "NVDA,AMD")
-    monkeypatch.setenv("REDDIT_SUBREDDITS", "stocks,options")
+    monkeypatch.setenv("NEWS_TICKERS", "NVDA,AMD")
+    monkeypatch.setenv("NEWS_SOURCES", "Reuters,Bloomberg")
 
     post = producer.build_mock_post()
 
     assert post["id"] == "11111111-2222-3333-4444-555555555555"
-    assert post["subreddit"] == "stocks"
+    assert post["source_name"] == "Reuters"
     assert post["ticker_hint"] == "NVDA"
-    assert post["author"] == "user_1234"
+    assert post["description"]
+    assert post["url"] == "https://news.example.com/articles/11111111-2222-3333-4444-555555555555"
     assert "timestamp" in post

@@ -27,23 +27,25 @@ class FakeSIA:
 
 
 def test_sentiment_label_thresholds():
-    assert analyzer.sentiment_label(0.10) == "positivo"
-    assert analyzer.sentiment_label(-0.10) == "negativo"
-    assert analyzer.sentiment_label(0.00) == "neutro"
+    assert analyzer.sentiment_label(0.10) == "positive"
+    assert analyzer.sentiment_label(-0.10) == "negative"
+    assert analyzer.sentiment_label(0.00) == "neutral"
 
 
-def test_build_analyzed_payload_extracts_ticker_from_title():
+def test_build_analyzed_payload_extracts_ticker_from_title_and_description():
     payload = {
         "id": "abc",
-        "subreddit": "stocks",
+        "source_name": "Reuters",
         "ticker_hint": "AMD",
         "title": "NVDA beats expectations and rallies",
-        "author": "alice",
+        "description": "The report highlights chip demand and strong demand for NVDA products.",
+        "url": "https://example.com/article",
         "timestamp": "2026-09-30T12:00:00Z",
     }
 
     result = analyzer.build_analyzed_payload(payload, FakeSIA({"compound": 0.7, "pos": 0.8, "neu": 0.1, "neg": 0.1}))
 
     assert result["ticker"] == "NVDA"
-    assert result["sentiment"]["label"] == "positivo"
+    assert result["source_name"] == "Reuters"
+    assert result["sentiment"]["label"] == "positive"
     assert result["sentiment"]["compound"] == 0.7

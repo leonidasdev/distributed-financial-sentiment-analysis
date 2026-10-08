@@ -1,12 +1,21 @@
 .venv/
 venv/
 env/
+.env
 __pycache__/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 *.pyc
 *.pyo
 *.pyd
 .DS_Store
+
+# Node-RED runtime artifacts
+nodered/node_modules/
+nodered/.config.*
+nodered/*.backup
+nodered/*.bak
+nodered/.config.*.backup

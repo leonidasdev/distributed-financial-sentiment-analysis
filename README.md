@@ -1,12 +1,12 @@
-# Reddit Financial Sentiment Analysis
+# Financial News Sentiment Analysis
 
-Distributed architecture built with Docker Compose + MQTT for synthetic or real Reddit ingestion, sentiment analysis with VADER, and persistence in MongoDB.
+Distributed architecture built with Docker Compose + MQTT for synthetic or real NewsAPI ingestion, sentiment analysis with VADER, and persistence in MongoDB.
 
 ## What the system does
 
 The main flow is:
 
-1. `producer-reddit` generates or fetches Reddit posts and publishes JSON messages to MQTT.
+1. `producer-newsapi` generates or fetches news articles from NewsAPI and publishes JSON messages to MQTT.
 2. `analyzer-sentiment` consumes the raw posts, detects the ticker, computes sentiment with VADER, and emits an enriched message.
 3. `consumer-db` stores both the raw payload and the analyzed payload in MongoDB.
 4. `dashboard-nodered` subscribes to the analyzed topics and exposes a visual dashboard.
@@ -16,8 +16,8 @@ The implementation prioritizes isolation: the runtime lives in Docker containers
 ## Services
 
 - `broker-mqtt`: Mosquitto with MQTT on `1883` and websocket support on `9001`.
-- `db-mongodb`: MongoDB for `reddit_analytics`.
-- `producer-reddit`: publishes raw posts.
+- `db-mongodb`: MongoDB for `news_analytics`.
+- `producer-newsapi`: publishes raw articles.
 - `analyzer-sentiment`: sentiment classifier and ticker detector.
 - `consumer-db`: persists raw and analyzed messages.
 - `dashboard-nodered`: Node-RED base for the web dashboard.
@@ -26,37 +26,39 @@ The implementation prioritizes isolation: the runtime lives in Docker containers
 
 This project uses a standard MQTT topic convention without double slashes:
 
-- `reddit/posts/raw` for raw publications
-- `reddit/posts/analyzed` for analyzer results
-- `reddit/alerts` for extreme sentiment alerts
-- `reddit/status/producer` for producer health with retained message
+- `news/articles/raw` for raw publications
+- `news/articles/analyzed` for analyzer results
+- `news/alerts` for extreme sentiment alerts
+- `news/status/producer` for producer health with retained message
 
 This topic structure improves interoperability, observability, and documentation clarity.
 
 ## Message schemas
 
-Input (`reddit/posts/raw`):
+Input (`news/articles/raw`):
 
 ```json
 {
   "id": "string",
-  "subreddit": "string",
+  "source_name": "string",
   "ticker_hint": "string",
   "title": "string",
-  "author": "string",
+  "description": "string",
+  "url": "string",
   "timestamp": "ISO-8601 UTC"
 }
 ```
 
-Output (`reddit/posts/analyzed`):
+Output (`news/articles/analyzed`):
 
 ```json
 {
   "id": "string",
-  "subreddit": "string",
+  "source_name": "string",
   "ticker": "string",
   "title": "string",
-  "author": "string",
+  "description": "string",
+  "url": "string",
   "sentiment": {
     "compound": 0.0,
     "pos": 0.0,
@@ -70,7 +72,7 @@ Output (`reddit/posts/analyzed`):
 
 ## Execution
 
-1. Copy `.env.example` to `.env` if you want to configure real Reddit access or adjust parameters.
+1. Copy `.env.example` to `.env` if you want to configure a NewsAPI key or adjust parameters.
 2. Run `docker compose up --build`.
 3. Open Node-RED at `http://localhost:1880`.
 
@@ -90,13 +92,19 @@ Validated in this workspace: `.venv` created, dependencies installed, `pytest` g
 
 ## Key variables
 
-- `REDDIT_USE_MOCK=true` enables synthetic generation.
-- If you define `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, and `REDDIT_USER_AGENT`, the producer can attempt to read from Reddit via `praw`.
+- `NEWSAPI_USE_MOCK=true` enables synthetic generation.
+- If you define `NEWSAPI_KEY`, the producer can query NewsAPI for live articles.
 - `MONGO_URI` points to `mongodb://db-mongodb:27017` inside Compose.
 
-## Reddit free-tier note
+## NewsAPI setup
 
-The project is compatible with a Reddit free-tier or developer app workflow. A Reddit account is sufficient to create a script app under the Reddit developer settings, and the app credentials can be used without a paid plan for demo or academic usage. This is useful when you want to replace mock data with live Reddit posts while being within lightweight usage limits.
+The project supports live NewsAPI data when a valid API key is provided. The default query targets finance-related stories and you can narrow it with `NEWSAPI_QUERY`.
+
+1. Create a NewsAPI account and copy the API key.
+2. Paste the key into `.env`.
+3. Set `NEWSAPI_USE_MOCK=false` to fetch live news.
+
+The mock mode remains available for demos, tests, and offline development.
 
 ## Persistence
 
@@ -113,6 +121,6 @@ The current tests cover the pure logic of the producer, analyzer, and MongoDB wr
 
 ## Design notes
 
-- The producer publishes an LWT on `reddit/status/producer` with `{"status": "OFFLINE"}` and marks `ONLINE` when it connects.
+- The producer publishes an LWT on `news/status/producer` with `{"status": "OFFLINE"}` and marks `ONLINE` when it connects.
 - The analyzer emits alerts when `|compound| > 0.6`.
-- MongoDB creates indexes on `ticker`/`timestamp` for analyzed documents and `ticker_hint`/`timestamp` for raw documents.
+- MongoDB creates indexes on `ticker`/`timestamp` for analyzed documents and `source_name`/`timestamp` for raw documents.

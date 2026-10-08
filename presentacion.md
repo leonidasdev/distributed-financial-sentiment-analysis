@@ -1,4 +1,4 @@
-# Distributed Financial Sentiment Analysis
+# Financial News Sentiment Analysis
 
 ## Diapositiva 1 — Portada
 
@@ -6,7 +6,7 @@
 
 - Análisis de sentimiento financiero en tiempo real
 - Arquitectura basada en MQTT + Python + MongoDB + Node-RED
-- Flujo de eventos distribuido para detectar sentimiento en publicaciones financieras
+- Flujo de eventos distribuido para procesar noticias financieras
 
 ---
 
@@ -14,16 +14,16 @@
 
 ### ¿Qué queremos resolver?
 
-- Tenemos un flujo continuo de mensajes de redes sociales y foros financieros
-- Necesitamos transformar texto no estructurado en información útil para el mercado
-- Queremos hacerlo en tiempo real, con desacoplamiento entre componentes y observabilidad
+- Hay un flujo continuo de noticias financieras no estructuradas
+- Queremos convertir titulares y descripciones en eventos útiles
+- Buscamos hacerlo en tiempo real, con observabilidad y bajo acoplamiento
 
 ### Resultado esperado
 
-- Publicaciones crudas en Kafka/MQTT
+- Ingesta de noticias desde NewsAPI
 - Análisis semántico con VADER
 - Identificación de ticker relevante
-- Persistencia en base de datos documental
+- Persistencia en MongoDB
 - Dashboard visual para monitorización
 
 ---
@@ -38,7 +38,7 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 
 ### Componentes clave
 
-- Producer: genera publicaciones sintéticas o consume Reddit real si hay credenciales
+- Producer: obtiene artículos de NewsAPI o genera noticias sintéticas
 - Broker MQTT: Mosquitto, coordina la comunicación por topics
 - Analyzer: detecta ticker y calcula sentimiento con VADER
 - DB Writer: persiste crudos y analizados en MongoDB
@@ -58,7 +58,7 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 ### En este proyecto
 
 - Los servicios no se llaman directamente entre sí
-- Se comunican via topics jerárquicos y eventos
+- Se comunican vía topics jerárquicos y eventos
 - La arquitectura es extensible y tolera cambios parciales
 
 ---
@@ -67,15 +67,15 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 
 ### Topics principales
 
-- `reddit/posts/raw` → mensajes originales
-- `reddit/posts/analyzed` → mensajes procesados
-- `reddit/alerts` → alertas por sentimiento extremo
-- `reddit/status/producer` → estado del productor
+- `news/articles/raw` -> mensajes originales
+- `news/articles/analyzed` -> mensajes procesados
+- `news/alerts` -> alertas por sentimiento extremo
+- `news/status/producer` -> estado del productor
 
 ### Decisión de diseño
 
-- Se normalizó la convención para evitar barras dobles y mejorar claridad
-- La estructura sigue un patrón estándar y fácil de observar
+- Se usa una convención jerárquica clara y consistente
+- El estado del productor utiliza retained message y LWT
 
 ---
 
@@ -83,21 +83,21 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 
 ### ¿Qué hace?
 
-- Recibe el post desde MQTT
-- Busca ticker financiero en el título
-- Aplica VADER sobre el texto
+- Recibe el artículo desde MQTT
+- Busca ticker financiero en el texto combinado
+- Aplica VADER sobre título + descripción
 - Calcula scores: `compound`, `pos`, `neu`, `neg`
-- Asigna etiqueta: positivo / neutro / negativo
+- Asigna etiqueta: positive / neutral / negative
 
 ### Regla de negocio
 
-- `compound >= 0.05` → positivo
-- `compound <= -0.05` → negativo
-- resto → neutro
+- `compound >= 0.05` -> positive
+- `compound <= -0.05` -> negative
+- resto -> neutral
 
 ### Alertas
 
-- Si `abs(compound) > 0.6`, se publica una alerta en `reddit/alerts`
+- Si `abs(compound) > 0.6`, se publica una alerta en `news/alerts`
 
 ---
 
@@ -105,14 +105,14 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 
 ### ¿Qué almacenamos?
 
-- mensajes crudos completos
-- mensajes analizados con sentimiento y ticker
-- metadatos: `id`, `timestamp`, `subreddit`, etc.
+- artículos crudos completos
+- artículos analizados con sentimiento y ticker
+- metadatos: `id`, `timestamp`, `source_name`, `url`, etc.
 
 ### ¿Por qué MongoDB?
 
-- JSON-like documents
-- ideal para flujos semiestructurados
+- documentos JSON-like
+- ideal para datos semiestructurados
 - consulta y análisis posterior sencilla
 
 ### Idempotencia
@@ -145,14 +145,13 @@ Producer --> MQTT Broker --> Analyzer --> MongoDB
 - `pytest` ejecutado y en verde
 - `ruff check .` ejecutado y en verde
 - Docker levantado con `docker compose up -d --force-recreate`
-- MongoDB con mensajes reales persistidos
+- MongoDB con mensajes persistidos
 
-### Resultados reales
+### Resultado esperado en la demo
 
-- `raw= 1195`
-- `analyzed= 1193`
-
-Esto demuestra que el sistema funciona end-to-end y no solo a nivel unitario.
+- noticias entrando por NewsAPI o mock
+- análisis VADER en tiempo real
+- persistencia y dashboard funcionando en paralelo
 
 ---
 
@@ -166,7 +165,7 @@ Esto demuestra que el sistema funciona end-to-end y no solo a nivel unitario.
 
 ### Beneficio principal
 
-La solución no es solo un ejercicio académico; es un sistema operativo con pipeline distribuido funcionando en entorno real.
+La solución no es sólo un ejercicio académico; es un sistema operativo con pipeline distribuido funcionando de forma clara para la demo.
 
 ---
 
@@ -181,10 +180,10 @@ La solución no es solo un ejercicio académico; es un sistema operativo con pip
 
 ### Mejoras futuras
 
-- particionado y cluster para broker
+- cluster o particionado del broker
 - replicación de MongoDB
 - métricas y healthchecks más avanzados
-- dashboard más detallado por ticker y alertas
+- dashboard más detallado por ticker y fuente
 
 ---
 
@@ -202,7 +201,7 @@ Este proyecto demuestra cómo construir un sistema distribuido para análisis de
 
 ### En una frase
 
-Es una arquitectura realista de procesamiento de eventos para información financiera, con una base sólida para ampliación y defensa técnica.
+Es una arquitectura realista de procesamiento de noticias financieras, con una base sólida para ampliación y defensa técnica.
 
 ---
 
@@ -218,23 +217,3 @@ Es una arquitectura realista de procesamiento de eventos para información finan
 - empezar por la arquitectura
 - mostrar flujo de mensajes
 - mostrar evidencias de Docker y MongoDB
-- cerrar con fortalezas y mejoras futuras
-
----
-
-## Instrucciones para PowerPoint o exportación
-
-Si el proyecto exige una presentación en PowerPoint, la forma más práctica es:
-
-1. Usar esta presentación como base narrada en Markdown.
-2. Exportarla a HTML o PDF si se usa Marp.
-3. Copiar el contenido en una presentación de PowerPoint.
-4. Mantener 1 idea por diapositiva y 30-60 segundos de explicación cada una.
-5. Añadir una diapositiva final con “Conclusión y preguntas”.
-
-Opciones recomendadas:
-
-- Marp + VS Code: permite generar slides desde markdown
-- PowerPoint: crear slides con los mismos títulos y contenido
-- Google Slides: alternativa rápida si no se dispone de PowerPoint
-

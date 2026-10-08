@@ -24,10 +24,11 @@ class SentimentDetails(SentimentScores):
 
 class AnalyzedPost(TypedDict):
     id: str
-    subreddit: str
+    source_name: str
     ticker: str
     title: str
-    author: str
+    description: str
+    url: str
     sentiment: SentimentDetails
     timestamp: str
 
@@ -38,10 +39,10 @@ def utc_now() -> str:
 
 def sentiment_label(compound: float) -> str:
     if compound >= 0.05:
-        return "positivo"
+        return "positive"
     if compound <= -0.05:
-        return "negativo"
-    return "neutro"
+        return "negative"
+    return "neutral"
 
 
 def ensure_vader() -> SentimentIntensityAnalyzer:
@@ -53,39 +54,42 @@ def create_client() -> mqtt.Client:
     return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="analyzer-sentiment")
 
 
-RAW_TOPIC = "reddit/posts/raw"
-ANALYZED_TOPIC = "reddit/posts/analyzed"
-ALERT_TOPIC = "reddit/alerts"
+RAW_TOPIC = "news/articles/raw"
+ANALYZED_TOPIC = "news/articles/analyzed"
+ALERT_TOPIC = "news/alerts"
 
 
 def subscribe_topics(client: mqtt.Client) -> None:
-    client.subscribe(os.getenv("REDDIT_RAW_TOPIC", RAW_TOPIC), qos=1)
+    client.subscribe(os.getenv("NEWS_RAW_TOPIC", RAW_TOPIC), qos=1)
 
 
 def publish_analyzed(client: mqtt.Client, payload: AnalyzedPost) -> None:
-    topic = os.getenv("REDDIT_ANALYZED_TOPIC", ANALYZED_TOPIC)
+    topic = os.getenv("NEWS_ANALYZED_TOPIC", ANALYZED_TOPIC)
     client.publish(topic, json.dumps(payload, ensure_ascii=True), qos=1)
 
 
 def publish_alert(client: mqtt.Client, payload: dict[str, object]) -> None:
-    topic = os.getenv("REDDIT_ALERT_TOPIC", ALERT_TOPIC)
+    topic = os.getenv("NEWS_ALERT_TOPIC", ALERT_TOPIC)
     client.publish(topic, json.dumps(payload, ensure_ascii=True), qos=0)
 
 
 def build_analyzed_payload(post: dict[str, object], sia: SentimentIntensityAnalyzer) -> AnalyzedPost:
     title = str(post.get("title", ""))
+    description = str(post.get("description", ""))
+    combined_text = f"{title} {description}".strip()
     ticker_hint = str(post.get("ticker_hint", "")).upper()
-    match = TICKER_PATTERN.search(title)
+    match = TICKER_PATTERN.search(combined_text)
     ticker = match.group(1).upper() if match else (ticker_hint or "UNKNOWN")
-    scores = sia.polarity_scores(title)
+    scores = sia.polarity_scores(combined_text)
     compound = float(scores["compound"])
 
     return {
         "id": str(post.get("id", "")),
-        "subreddit": str(post.get("subreddit", "")),
+        "source_name": str(post.get("source_name", "")),
         "ticker": ticker,
         "title": title,
-        "author": str(post.get("author", "")),
+        "description": description,
+        "url": str(post.get("url", "")),
         "sentiment": {
             "compound": compound,
             "pos": float(scores["pos"]),
@@ -114,8 +118,9 @@ def on_message_factory(client: mqtt.Client, sia: SentimentIntensityAnalyzer):
                 {
                     "id": analyzed["id"],
                     "ticker": analyzed["ticker"],
-                    "subreddit": analyzed["subreddit"],
+                    "source_name": analyzed["source_name"],
                     "title": analyzed["title"],
+                    "url": analyzed["url"],
                     "compound": compound,
                     "label": analyzed["sentiment"]["label"],
                     "timestamp": analyzed["timestamp"],

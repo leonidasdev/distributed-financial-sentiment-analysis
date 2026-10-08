@@ -17,7 +17,7 @@ services:
       start_period: 15s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
   db-mongodb:
     image: mongo:latest
@@ -34,23 +34,24 @@ services:
       start_period: 20s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
-  producer-reddit:
+  producer-newsapi:
     build:
       context: ./producer
-    container_name: producer-reddit
+    container_name: producer-newsapi
     depends_on:
       - broker-mqtt
     environment:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
-      REDDIT_RAW_TOPIC: reddit/posts/raw
-      REDDIT_STATUS_TOPIC: reddit/status/producer
-      REDDIT_USE_MOCK: "true"
-      REDDIT_INTERVAL_MIN: "1"
-      REDDIT_INTERVAL_MAX: "3"
-      REDDIT_TICKERS: NVDA,AMD,TSM,AVGO,INTC,MSFT,GOOGL,AMZN,META,AAPL,PLTR,SNOW,ORCL
+      NEWS_RAW_TOPIC: news/articles/raw
+      NEWS_STATUS_TOPIC: news/status/producer
+      NEWSAPI_USE_MOCK: "true"
+      NEWS_INTERVAL_MIN: "1"
+      NEWS_INTERVAL_MAX: "3"
+      NEWS_TICKERS: NVDA,AMD,TSM,AVGO,INTC,MSFT,GOOGL,AMZN,META,AAPL,PLTR,SNOW,ORCL
+      NEWS_SOURCES: Reuters,Bloomberg,CNBC,Financial Times,The Wall Street Journal
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
       interval: 15s
@@ -59,7 +60,7 @@ services:
       start_period: 20s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
   analyzer-sentiment:
     build:
@@ -70,9 +71,9 @@ services:
     environment:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
-      REDDIT_RAW_TOPIC: reddit/posts/raw
-      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
-      REDDIT_ALERT_TOPIC: reddit/alerts
+      NEWS_RAW_TOPIC: news/articles/raw
+      NEWS_ANALYZED_TOPIC: news/articles/analyzed
+      NEWS_ALERT_TOPIC: news/alerts
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
       interval: 15s
@@ -81,7 +82,7 @@ services:
       start_period: 25s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
   consumer-db:
     build:
@@ -94,11 +95,11 @@ services:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
       MONGO_URI: mongodb://db-mongodb:27017
-      MONGO_DB: reddit_analytics
-      RAW_COLLECTION: raw_posts
+      MONGO_DB: news_analytics
+      RAW_COLLECTION: raw_articles
       ANALYZED_COLLECTION: sentiment_analyzed
-      REDDIT_RAW_TOPIC: reddit/posts/raw
-      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
+      NEWS_RAW_TOPIC: news/articles/raw
+      NEWS_ANALYZED_TOPIC: news/articles/analyzed
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('broker-mqtt', 1883)); s.close()\" || exit 1"]
       interval: 15s
@@ -107,7 +108,7 @@ services:
       start_period: 25s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
   dashboard-nodered:
     image: nodered/node-red:latest
@@ -119,8 +120,8 @@ services:
     environment:
       MQTT_BROKER_HOST: broker-mqtt
       MQTT_BROKER_PORT: "1883"
-      REDDIT_ANALYZED_TOPIC: reddit/posts/analyzed
-      REDDIT_ALERT_TOPIC: reddit/alerts
+      NEWS_ANALYZED_TOPIC: news/articles/analyzed
+      NEWS_ALERT_TOPIC: news/alerts
     volumes:
       - ./nodered:/data
     healthcheck:
@@ -131,10 +132,10 @@ services:
       start_period: 20s
     restart: unless-stopped
     networks:
-      - reddit_net
+      - news_net
 
 networks:
-  reddit_net:
+  news_net:
     driver: bridge
 
 volumes:
