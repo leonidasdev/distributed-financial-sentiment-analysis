@@ -36,4 +36,3 @@ python -m ruff check .
 
 - `NEWSAPI_USE_MOCK=true` keeps the pipeline fully offline and reproducible.
 - Live NewsAPI ingestion was validated in this workspace with the configured API key.
-- The repository also includes the Spanish deliverables for the university submission: `memoria.md`, `notas.md`, and `presentacion.md`.
