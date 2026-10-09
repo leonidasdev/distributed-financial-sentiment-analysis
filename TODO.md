@@ -4,10 +4,12 @@
 
 - [x] Docker Compose architecture and private network defined.
 - [x] MQTT broker, MongoDB, producer, analyzer, writer, and Node-RED are wired together.
-- [x] Producer now uses a synthetic mock mode and supports NewsAPI ingestion.
+- [x] Producer now uses NewsAPI ingestion plus synthetic mock mode.
 - [x] Analyzer uses VADER sentiment scoring and ticker extraction.
 - [x] MongoDB persists raw and analyzed events.
-- [x] README documents the flow, message schemas, and local startup.
+- [x] README is shortened and oriented to delivery.
+- [x] Spanish memoria, notas, and presentación are aligned to the assignment.
+- [x] Requirements audit file added for rubric mapping.
 - [x] Dependencies stay isolated in containers and the local `.venv` workflow is documented.
 - [x] `.gitignore` excludes virtualenv and cache artifacts.
 - [x] `requirements-dev.txt` contains local tooling only.
@@ -18,20 +20,21 @@
 - [x] Development dependencies are installed in `.venv`.
 - [x] `ruff check .` is green.
 - [x] `pytest` is green.
+- [x] Live NewsAPI article fetch validated with the configured API key.
 
 ## Remaining work for a polished delivery
 
 ### Priority 0: NewsAPI migration closure
-- [ ] Update the Spanish presentation docs to describe NewsAPI instead of Reddit.
-- [ ] Regenerate the Node-RED export and screenshots with the new topic names.
-- [ ] Validate a live NewsAPI run with a valid key and confirm the MongoDB documents look correct.
+- [ ] Export the Node-RED flow to PDF for the ZIP handoff.
+- [ ] Capture a final screenshot of the dashboard for the presentation deck.
+- [ ] If needed, run a live Docker round-trip with MongoDB populated from NewsAPI and then switch back to mock mode for a stable demo.
 
 ### Priority 1: broker and event design
-- [ ] Document the MQTT topic hierarchy, retained status message, and QoS choices in the final memory.
-- [ ] Make sure the dashboard subscribes to the analyzed and alert topics used by the updated producer and analyzer.
+- [x] Document the MQTT topic hierarchy, retained status message, and QoS choices in the final memory.
+- [x] Make sure the dashboard subscribes to the analyzed and alert topics used by the updated producer and analyzer.
 
 ### Priority 2: demo and academic finish
-- [ ] Finalize the memory in Spanish, the slides, and the oral demo script.
+- [x] Finalize the oral demo script and the last slide deck polish.
 - [ ] Add integration tests for MQTT and Mongo if there is time left.
 
 ## Technical risks

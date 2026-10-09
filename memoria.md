@@ -79,6 +79,10 @@ MongoDB se utiliza como almacén documental para guardar tanto el artículo orig
 
 Aunque en esta entrega no se despliega un cluster distribuido real, la elección de MongoDB encaja bien con el formato JSON de los mensajes y con la evolución futura hacia particionado o replicación.
 
+En la defensa oral conviene explicar este punto con claridad: la asignatura exige como mínimo un sistema publish/subscribe, y ese eje está cubierto por MQTT. La base de datos se mantiene centralizada de forma deliberada para no aumentar la complejidad operativa del proyecto ni comprometer la demo, pero el diseño deja abierta la evolución hacia un replica set o un despliegue sharded.
+
+Desde el punto de vista PACELC, la solución actual prioriza latencia y simplicidad operativa sobre una consistencia distribuida fuerte en la capa de persistencia. En ausencia de un cluster real, el proyecto opta por una implementación centralizada con idempotencia en la aplicación y deja el salto a replica set o sharding como mejora futura. Esto es coherente con el objetivo de la asignatura: demostrar una arquitectura distribuida basada en eventos y una demo estable, no montar una plataforma de almacenamiento compleja innecesaria.
+
 ## 3. Implementación del análisis de sentimiento
 
 El analizador recibe el título y la descripción del artículo, construye un texto combinado y aplica VADER. Para extraer el ticker usa una expresión regular sobre una lista de símbolos financieros conocida.
@@ -127,10 +131,11 @@ Las limitaciones principales son:
 ## 6. Trabajo futuro
 
 - añadir una capa de cache o colas auxiliares para absorber ráfagas
-- incorporar replicación o cluster en MongoDB
+- incorporar réplica o cluster en MongoDB si el volumen de datos crece
 - ampliar Node-RED con métricas por ticker y por fuente
 - añadir pruebas de integración con contenedores efímeros
 - explorar Kafka como evolución natural para más particiones y consumidores
+- revisar un shard key razonable si el equipo decide llevar el almacenamiento a sharding en una iteración futura
 
 ## 7. Cierre
 

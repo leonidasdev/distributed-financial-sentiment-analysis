@@ -185,9 +185,31 @@ La solución no es sólo un ejercicio académico; es un sistema operativo con pi
 - métricas y healthchecks más avanzados
 - dashboard más detallado por ticker y fuente
 
+### PACELC
+
+- si hay partición, priorizamos disponibilidad para no romper la demo
+- sin partición, priorizamos latencia y simplicidad operativa
+- la consistencia se refuerza con idempotencia en la aplicación, no con un cluster complejo
+
 ---
 
-## Diapositiva 12 — Conclusión
+## Diapositiva 12 — Demo y modo operativo
+
+### Estrategia práctica
+
+- podemos usar NewsAPI real durante un rato para poblar el sistema con noticias auténticas
+- cuando queramos estabilidad total, volvemos a `NEWSAPI_USE_MOCK=true`
+- eso no cambia la arquitectura, sólo la fuente de entrada
+
+### Qué significa para la defensa
+
+- demuestra flexibilidad de la solución
+- evita depender demasiado de la cuota externa
+- permite enseñar noticias reales sin sacrificar robustez
+
+---
+
+## Diapositiva 13 — Conclusión
 
 ### Mensaje final
 
@@ -205,7 +227,7 @@ Es una arquitectura realista de procesamiento de noticias financieras, con una b
 
 ---
 
-## Diapositiva 13 — Cierre / preguntas
+## Diapositiva 14 — Cierre / preguntas
 
 ### Gracias
 

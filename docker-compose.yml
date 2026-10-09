@@ -47,7 +47,7 @@ services:
       MQTT_PORT: "1883"
       NEWS_RAW_TOPIC: news/articles/raw
       NEWS_STATUS_TOPIC: news/status/producer
-      NEWSAPI_USE_MOCK: "true"
+      NEWSAPI_USE_MOCK: ${NEWSAPI_USE_MOCK:-true}
       NEWS_INTERVAL_MIN: "1"
       NEWS_INTERVAL_MAX: "3"
       NEWS_TICKERS: NVDA,AMD,TSM,AVGO,INTC,MSFT,GOOGL,AMZN,META,AAPL,PLTR,SNOW,ORCL
