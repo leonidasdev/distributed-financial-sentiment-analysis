@@ -6,7 +6,7 @@
                 "view-store-position": false,
                 "view-show-grid": true,
                 "view-snap-grid": true,
-                "view-grid-size": 20,
+                "view-grid-size": "20",
                 "view-node-status": true,
                 "view-node-info-icon": true,
                 "view-node-show-label": true,
@@ -27,11 +27,12 @@
                                 "info",
                                 "help",
                                 "config",
-                                "context"
+                                "context",
+                                "dashboard-2.0"
                             ],
-                            "height": 302,
+                            "height": 306,
                             "hidden": false,
-                            "active": "info"
+                            "active": "dashboard-2.0"
                         },
                         "bottom": {
                             "tabs": [
@@ -47,7 +48,7 @@
                             "tabs": [
                                 "explorer"
                             ],
-                            "height": 302,
+                            "height": 306,
                             "hidden": false,
                             "active": "explorer"
                         },
@@ -59,6 +60,12 @@
                             "active": "palette"
                         }
                     }
+                }
+            },
+            "dialog": {
+                "export": {
+                    "pretty": true,
+                    "json-view": true
                 }
             }
         }

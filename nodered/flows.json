@@ -1,108 +1,231 @@
 [
-  {
-    "id": "flow-financial-sentiment",
-    "type": "tab",
-    "label": "Financial Sentiment Dashboard",
-    "disabled": false,
-    "info": "Flow to visualize analyzed events and alerts from the MQTT pipeline."
-  },
-  {
-    "id": "broker-config",
-    "type": "mqtt-broker",
-    "z": "flow-financial-sentiment",
-    "name": "broker-mqtt",
-    "broker": "broker-mqtt",
-    "port": "1883",
-    "clientid": "nodered-dashboard",
-    "autoConnect": true,
-    "usetls": false,
-    "protocolVersion": "4",
-    "keepalive": "60",
-    "cleansession": true,
-    "birthTopic": "news/status/nodered",
-    "birthQos": "1",
-    "birthPayload": "{\"status\":\"ONLINE\"}",
-    "birthRetain": true,
-    "willTopic": "news/status/nodered",
-    "willQos": "1",
-    "willPayload": "{\"status\":\"OFFLINE\"}",
-    "willRetain": true,
-    "x": 80,
-    "y": 80,
-    "wires": []
-  },
-  {
-    "id": "mqtt-analyzed",
-    "type": "mqtt in",
-    "z": "flow-financial-sentiment",
-    "name": "MQTT analyzed",
-    "topic": "news/articles/analyzed",
-    "qos": "1",
-    "datatype": "auto",
-    "broker": "broker-config",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "x": 180,
-    "y": 200,
-    "wires": [
-      [
-        "debug-analyzed"
-      ]
-    ]
-  },
-  {
-    "id": "mqtt-alerts",
-    "type": "mqtt in",
-    "z": "flow-financial-sentiment",
-    "name": "MQTT alerts",
-    "topic": "news/alerts",
-    "qos": "0",
-    "datatype": "auto",
-    "broker": "broker-config",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "x": 180,
-    "y": 320,
-    "wires": [
-      [
-        "debug-alerts"
-      ]
-    ]
-  },
-  {
-    "id": "debug-analyzed",
-    "type": "debug",
-    "z": "flow-financial-sentiment",
-    "name": "Received analysis",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "payload",
-    "targetType": "msg",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 460,
-    "y": 200,
-    "wires": []
-  },
-  {
-    "id": "debug-alerts",
-    "type": "debug",
-    "z": "flow-financial-sentiment",
-    "name": "Alerts",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "payload",
-    "targetType": "msg",
-    "statusVal": "",
-    "statusType": "auto",
-    "x": 460,
-    "y": 320,
-    "wires": []
-  }
+    {
+        "id": "flow-financial-sentiment",
+        "type": "tab",
+        "label": "Financial Sentiment Dashboard",
+        "disabled": false,
+        "info": "Flow to visualize analyzed events and alerts from the MQTT pipeline."
+    },
+    {
+        "id": "mqtt-analyzed",
+        "type": "mqtt in",
+        "z": "flow-financial-sentiment",
+        "name": "MQTT analyzed",
+        "topic": "news/articles/analyzed",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "broker-config",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 200,
+        "wires": [
+            [
+                "debug-analyzed",
+                "ec6ffcd7b0e8c17b"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-alerts",
+        "type": "mqtt in",
+        "z": "flow-financial-sentiment",
+        "name": "MQTT alerts",
+        "topic": "news/alerts",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "broker-config",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 320,
+        "wires": [
+            [
+                "debug-alerts"
+            ]
+        ]
+    },
+    {
+        "id": "debug-analyzed",
+        "type": "debug",
+        "z": "flow-financial-sentiment",
+        "name": "Received analysis",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 460,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "debug-alerts",
+        "type": "debug",
+        "z": "flow-financial-sentiment",
+        "name": "Alerts",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 460,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "ec6ffcd7b0e8c17b",
+        "type": "ui-template",
+        "z": "flow-financial-sentiment",
+        "group": "dad50b421a7ddb79",
+        "page": "",
+        "ui": "",
+        "name": "Sentiment gauge template",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "head": "",
+        "format": "\n<template>\n  <div class=\"gauge-grid\">\n    <div\n      v-for=\"(info, ticker) in tickerData\"\n      :key=\"ticker\"\n      class=\"gauge-card\"\n    >\n      <div class=\"card-header\">\n        <span class=\"ticker\">@{{ ticker }}</span>\n\n        <span\n          class=\"sentiment-badge\"\n          :style=\"{\n            backgroundColor: sentimentColor(info.compound)\n          }\"\n        >\n          @{{ info.label }}\n        </span>\n      </div>\n\n      <!-- Semicircular sentiment gauge -->\n      <div class=\"gauge\">\n        <div\n          class=\"gauge-arc\"\n          :style=\"gaugeStyle(info.compound)\"\n        ></div>\n\n        <div class=\"gauge-center\">\n          <div\n            class=\"gauge-score\"\n            :style=\"{ color: sentimentColor(info.compound) }\"\n          >\n            @{{ info.compound.toFixed(2) }}\n          </div>\n          <div class=\"gauge-caption\">COMPOUND</div>\n        </div>\n      </div>\n\n      <div class=\"gauge-scale\">\n        <span>-1.0 Bearish</span>\n        <span>Neutral</span>\n        <span>+1.0 Bullish</span>\n      </div>\n\n      <div class=\"article-title\">\n        @{{ info.title }}\n      </div>\n\n      <div class=\"card-footer\">\n        <span>@{{ info.source }}</span>\n        <span>@{{ info.time }}</span>\n      </div>\n    </div>\n\n    <div\n      v-if=\"Object.keys(tickerData).length === 0\"\n      class=\"empty-state\"\n    >\n      Waiting for analyzed news...\n    </div>\n  </div>\n</template>\n\n<script>\nexport default {\n  data() {\n    return {\n      tickerData: {}\n    }\n  },\n\n  watch: {\n    msg: {\n      immediate: true,\n      deep: true,\n      handler(msg) {\n        if (!msg || !msg.payload) return\n\n        const p = msg.payload\n\n        // Each incoming message represents one article.\n        const ticker = String(\n          p.ticker || p.ticker_hint || \"\"\n        ).trim().toUpperCase()\n\n        if (!ticker) return\n\n        // Support several common sentiment output formats.\n        const sentiment = p.sentiment || {}\n\n        let rawScore =\n          sentiment.compound ??\n          sentiment.score ??\n          p.compound ??\n          p.score\n\n        // Support sentiment as a numeric value too.\n        if (typeof sentiment === \"number\") {\n          rawScore = sentiment\n        }\n\n        const score = Number(rawScore)\n\n        if (!Number.isFinite(score)) {\n          return\n        }\n\n        const compound = Math.max(-1, Math.min(1, score))\n\n        let label =\n          sentiment.label ||\n          sentiment.sentiment ||\n          p.label\n\n        if (!label) {\n          if (compound > 0.25) {\n            label = \"POSITIVE\"\n          } else if (compound < -0.25) {\n            label = \"NEGATIVE\"\n          } else {\n            label = \"NEUTRAL\"\n          }\n        }\n\n        const timestamp = p.timestamp\n          ? new Date(p.timestamp)\n          : new Date()\n\n        // Update the ticker's existing card.\n        // A new ticker automatically creates a new card.\n        this.tickerData = {\n          ...this.tickerData,\n          [ticker]: {\n            compound,\n            label: String(label).toUpperCase(),\n            title: p.title || \"No headline available\",\n            source: p.source_name || p.source || \"Unknown\",\n            time: timestamp.toLocaleTimeString()\n          }\n        }\n      }\n    }\n  },\n\n  methods: {\n    sentimentColor(score) {\n      if (score > 0.25) return \"#16a34a\"\n      if (score < -0.25) return \"#dc2626\"\n      return \"#ca8a04\"\n    },\n\n    gaugeStyle(score) {\n      // Map -1..+1 to 0..100%.\n      const percent = ((score + 1) / 2) * 100\n      const degrees = percent * 1.8\n      const color = this.sentimentColor(score)\n\n      return {\n        background: `conic-gradient(\n          from 270deg,\n          ${color} 0deg,\n          ${color} ${degrees}deg,\n          #374151 ${degrees}deg,\n          #374151 180deg,\n          transparent 180deg 360deg\n        )`\n      }\n    }\n  }\n}\n</script>\n\n<style>\n.gauge-grid {\n  display: grid;\n  grid-template-columns: repeat(\n    auto-fit,\n    minmax(240px, 1fr)\n  );\n  gap: 16px;\n  padding: 16px;\n  background: #111827;\n}\n\n.gauge-card {\n  min-width: 0;\n  padding: 18px;\n  border-radius: 14px;\n  background: #1f2937;\n  color: #f9fafb;\n  border: 1px solid #374151;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);\n}\n\n.card-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 8px;\n  margin-bottom: 20px;\n}\n\n.ticker {\n  font-size: 22px;\n  font-weight: 800;\n  letter-spacing: 1px;\n  color: #60a5fa;\n}\n\n.sentiment-badge {\n  color: white;\n  font-size: 10px;\n  font-weight: 800;\n  padding: 5px 8px;\n  border-radius: 6px;\n}\n\n.gauge {\n  width: 190px;\n  height: 100px;\n  position: relative;\n  overflow: hidden;\n  margin: 0 auto;\n}\n\n.gauge-arc {\n  width: 190px;\n  height: 190px;\n  position: absolute;\n  top: 0;\n  left: 0;\n  border-radius: 50%;\n}\n\n.gauge-center {\n  position: absolute;\n  width: 150px;\n  height: 75px;\n  left: 20px;\n  bottom: 0;\n  border-radius: 100px 100px 0 0;\n  background: #1f2937;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: flex-end;\n  padding-bottom: 8px;\n  box-sizing: border-box;\n}\n\n.gauge-score {\n  font-size: 30px;\n  line-height: 1.1;\n  font-weight: 900;\n  font-variant-numeric: tabular-nums;\n}\n\n.gauge-caption {\n  font-size: 9px;\n  letter-spacing: 1.5px;\n  color: #9ca3af;\n  margin-top: 4px;\n}\n\n.gauge-scale {\n  display: flex;\n  justify-content: space-between;\n  gap: 4px;\n  margin-top: 10px;\n  margin-bottom: 18px;\n  color: #9ca3af;\n  font-size: 9px;\n}\n\n.article-title {\n  min-height: 40px;\n  font-size: 12px;\n  line-height: 1.5;\n  color: #d1d5db;\n  overflow-wrap: anywhere;\n}\n\n.card-footer {\n  display: flex;\n  flex-wrap: wrap;\n  justify-content: space-between;\n  gap: 8px;\n  border-top: 1px solid #374151;\n  padding-top: 12px;\n  margin-top: 14px;\n  color: #9ca3af;\n  font-size: 10px;\n}\n\n.empty-state {\n  grid-column: 1 / -1;\n  padding: 40px;\n  text-align: center;\n  color: #9ca3af;\n}\n</style>\n",
+        "storeOutMessages": true,
+        "passthru": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 490,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "broker-config",
+        "type": "mqtt-broker",
+        "z": "flow-financial-sentiment",
+        "name": "broker-mqtt",
+        "broker": "broker-mqtt",
+        "port": "1883",
+        "clientid": "nodered-dashboard",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "news/status/nodered",
+        "birthQos": "1",
+        "birthRetain": true,
+        "birthPayload": "{\"status\":\"ONLINE\"}",
+        "willTopic": "news/status/nodered",
+        "willQos": "1",
+        "willRetain": true,
+        "willPayload": "{\"status\":\"OFFLINE\"}"
+    },
+    {
+        "id": "dad50b421a7ddb79",
+        "type": "ui-group",
+        "name": "Sentiment Analysis",
+        "page": "33e6d1594150b413",
+        "width": "4",
+        "height": "4",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false",
+        "groupType": "default",
+        "tab": ""
+    },
+    {
+        "id": "33e6d1594150b413",
+        "type": "ui-page",
+        "name": "Financial Analysis",
+        "ui": "27d791f75296a460",
+        "path": "/financial-analysis",
+        "icon": "home",
+        "layout": "grid",
+        "theme": "56b3d64332cb9b06",
+        "breakpoints": [
+            {
+                "name": "Default",
+                "px": "0",
+                "cols": "3"
+            },
+            {
+                "name": "Tablet",
+                "px": "576",
+                "cols": "6"
+            },
+            {
+                "name": "Small Desktop",
+                "px": "768",
+                "cols": "9"
+            },
+            {
+                "name": "Desktop",
+                "px": "1024",
+                "cols": "12"
+            }
+        ],
+        "tabs": [],
+        "order": 1,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "27d791f75296a460",
+        "type": "ui-base",
+        "name": "My Dashboard",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "headerContent": "page",
+        "navigationStyle": "default",
+        "titleBarStyle": "default",
+        "showReconnectNotification": true,
+        "notificationDisplayTime": 1,
+        "showDisconnectNotification": true,
+        "allowInstall": false
+    },
+    {
+        "id": "56b3d64332cb9b06",
+        "type": "ui-theme",
+        "name": "Default Theme",
+        "colors": {
+            "surface": "#fcfcfd",
+            "primary": "#0d74ce",
+            "bgPage": "#f9f9fb",
+            "groupBg": "#ffffff",
+            "groupOutline": "#d9d9e0"
+        },
+        "sizes": {
+            "density": "default",
+            "pagePadding": "12px",
+            "groupGap": "12px",
+            "groupBorderRadius": "4px",
+            "widgetGap": "12px"
+        }
+    },
+    {
+        "id": "1369f5ea655ea17c",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@flowfuse/node-red-dashboard": "1.33.0"
+        }
+    }
 ]
