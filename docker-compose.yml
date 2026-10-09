@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   broker-mqtt:
     image: eclipse-mosquitto:latest
@@ -10,11 +12,11 @@ services:
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     healthcheck:
-      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$SYS/#' -C 1 -W 3 >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -t '$$SYS/#' -C 1 -W 3 >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 10s
     restart: unless-stopped
     networks:
       - news_net
@@ -41,7 +43,8 @@ services:
       context: ./producer
     container_name: producer-newsapi
     depends_on:
-      - broker-mqtt
+      broker-mqtt:
+        condition: service_healthy
     environment:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
@@ -67,7 +70,8 @@ services:
       context: ./analyzer
     container_name: analyzer-sentiment
     depends_on:
-      - broker-mqtt
+      broker-mqtt:
+        condition: service_healthy
     environment:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
@@ -89,8 +93,10 @@ services:
       context: ./db_writer
     container_name: consumer-db
     depends_on:
-      - broker-mqtt
-      - db-mongodb
+      broker-mqtt:
+        condition: service_healthy
+      db-mongodb:
+        condition: service_healthy
     environment:
       MQTT_HOST: broker-mqtt
       MQTT_PORT: "1883"
@@ -116,7 +122,8 @@ services:
     ports:
       - "1880:1880"
     depends_on:
-      - broker-mqtt
+      broker-mqtt:
+        condition: service_healthy
     environment:
       MQTT_BROKER_HOST: broker-mqtt
       MQTT_BROKER_PORT: "1883"
@@ -125,7 +132,7 @@ services:
     volumes:
       - ./nodered:/data
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:1880', timeout=2)\" || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:1880', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));\""]
       interval: 15s
       timeout: 5s
       retries: 5
