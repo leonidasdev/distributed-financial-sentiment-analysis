@@ -11,7 +11,6 @@ from typing import TypedDict
 
 import paho.mqtt.client as mqtt
 
-
 TICKERS = [
     "NVDA",
     "AMD",
